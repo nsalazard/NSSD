@@ -16,7 +16,7 @@ ofstream Edges;
 const int P = 8;            // Numero de parámetros de los bichines
 const int L =700;           // Espacio 2L*2L
 const double K = 10;        // Distancia recorrida en cada mov. por el bichin
-const double TMAX = 50;	// Tiempo de dibujo
+const double TMAX = 18000;	// Tiempo de dibujo
 const double E_gordo = 50;	// Energía a partir de la cual bichin no puede comer
 const int Ni = 4000; 				// Numero maximo de bichines (?)
 const int Nfood = 10000;  		// Numero de maximo comida | Nunca debe ser alcanzado.
