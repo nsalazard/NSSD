@@ -16,7 +16,7 @@ ofstream Edges;
 const int P = 8;            // Numero de parámetros de los bichines
 const int L =700;           // Espacio 2L*2L
 const double K = 10;        // Distancia recorrida en cada mov. por el bichin
-const double TMAX = 18000;	// Tiempo de dibujo
+const double TMAX =1000;	// Tiempo de dibujo
 const double E_gordo = 50;	// Energía a partir de la cual bichin no puede comer
 const int Ni = 4000; 				// Numero maximo de bichines (?)
 const int Nfood = 10000;  		// Numero de maximo comida | Nunca debe ser alcanzado.
@@ -27,7 +27,7 @@ int Energy_bank = 0; 				// El banco temporal de energia
 int Biome_energy=50000;			// Evita un bug con el colocamiento de la comida
 														// Como buena practica  Biome_energy<Nfood*E_inicial; 
 														// Podria funcionar incluso si esta condicion no se cumple pero se corre un riesgo.
-int food_dis=3;	
+int food_dis=4;	
 double mu = 0.0, sigma = L / 4;  	//Parámetros distribución gaussiana de comida
 //--- ------ Clases ------------
 class Bichin;
@@ -157,7 +157,7 @@ class Food
 				E = E0; //Valor E de la comida que es cedido cuando se interacciona con el bichin
 				CountFood += 1;
 			}
-		void ReStart(int E0,Crandom &ran64,double mux,double muy,double sigmax,double sigmay, int Franja)
+		void ReStart(int E0,Crandom &ran64,double mux,double muy,double sigmax,double sigmay, int Franja, int Rcir)
 			{	
 				CountFood += 1;
 				if(food_dis==0)
@@ -217,6 +217,31 @@ class Food
 								if (y > L)
 									{y = L;}
 					}
+				if(food_dis==4)
+					{
+						double place= ran64.r();
+								place= ran64.r();
+								if(place>0.5)
+									{
+										x =  2*L*ran64.r() - L;
+										y =  2*L*ran64.r() - L;
+									}
+								else	
+									{	
+										int Rf = Rcir + (2*50*ran64.r() - 50);
+										x = 2*Rf*ran64.r() - Rf;
+										y = sqrt(Rf*Rf - x*x);
+									}
+								if (x < -L)
+									{x = -L;}
+								if (y < -L)
+									{y = -L;}
+								if (x > L)
+									{x = L;}
+								if (y > L)
+									{y = L;}
+					}
+				
 				
 				E=E0;
 			}
@@ -317,7 +342,7 @@ class Selection
 				{break;};
 		}
 };
-		void RechargeFood(Food *food, Crandom &ran64, int Franja){ //Recargue la comida de manera aleatoria en el ambiente
+		void RechargeFood(Food *food, Crandom &ran64, int Franja, int Rcir){ //Recargue la comida de manera aleatoria en el ambiente
 	int index=0;
 	int Cn=0;
 	while (Energy_bank>E_inicial)
@@ -326,7 +351,7 @@ class Selection
 			index=int(Nfood*ran64.r());
 			if(food[index].GetE()==0)
 				{
-					food[index].ReStart(E_inicial,ran64,L/4,-L/4,sigma*2,sigma*2, Franja);
+					food[index].ReStart(E_inicial,ran64,L/4,-L/4,sigma*2,sigma*2, Franja, Rcir);
 					Energy_bank-=E_inicial;
 				}
 			Cn+=1.;
@@ -365,8 +390,8 @@ class Selection
 					{total_biomass+=Bichos[ii].GetE();};
 				return total_biomass;
 			}	
-		void food_distribution(Food *food,int Nfood0,double mux,double muy,double sigmax, double sigmay, double Rfood,int Franja,Crandom &ran64, int dis ){
-				int ix, iy;
+		void food_distribution(Food *food,int Nfood0,double mux,double muy,double sigmax, double sigmay, double Rfood,int Franja,int Rcir,Crandom &ran64, int dis ){
+				int ix, iy, Rf;
 				int  Ploted_energy=Biome_energy;
 				if(dis==0){
 						Uniform(food, Nfood0, Rfood, ran64, Ploted_energy, 0,Nfood0);
@@ -420,13 +445,26 @@ class Selection
 							}
 					}
 			//Franjas
-								if(dis==3){
+					if(dis==3){
 						Uniform(food,Nfood0/2,Rfood, ran64, Ploted_energy, 0, Nfood0/2);
 						for (int ii = Nfood0/2; ii+1 < Nfood0;ii += 2){
 							ix =  Franja + (2*50*ran64.r() - 50);
 							iy =  2*L*ran64.r() - L;
 							food[ii].Start(ix, iy, E_inicial, Rfood);
 							food[ii+1].Start(-ix, iy, E_inicial, Rfood);
+							Ploted_energy-=2*E_inicial;
+								if(Ploted_energy<=0)
+									{break;};
+							}
+					}
+					if(dis==4){
+						Uniform(food,Nfood0/2,Rfood, ran64, Ploted_energy, 0, Nfood0/2);
+						for (int ii = Nfood0/2; ii+1 < Nfood0;ii += 2){
+							Rf = Rcir + (2*50*ran64.r() - 50);
+							ix = 2*Rf*ran64.r() - Rf;
+							iy = sqrt(Rf*Rf - ix*ix);
+							food[ii].Start(ix, iy, E_inicial, Rfood);
+							food[ii+1].Start(ix, -iy, E_inicial, Rfood);
 							Ploted_energy-=2*E_inicial;
 								if(Ploted_energy<=0)
 									{break;};
@@ -512,7 +550,7 @@ class Selection
 void StartAnimacion(void)
 	{
 		salida << "set terminal gif animate" << endl;
-		salida << "set output 'Franja.gif'" << endl;
+		salida << "set output 'Bichin.gif'" << endl;
 		salida << "unset key" << endl;
 		salida << "set xrange[" << -L << ":" << L << "]" << endl;
 		salida << "set yrange[" << -L << ":" << L << "]" << endl;
@@ -552,6 +590,7 @@ int main(void)
 		double prob;  										//variable auxiliar para mover bichines
 		int prob1, prob2;  								//variables auxiliares para las mutaciones
 		int Franja = 300;
+		int Rcir = 300;
 
 		int total_bio=0,food_bio=0,Bichos_bio=0;
 
@@ -569,7 +608,7 @@ int main(void)
 				Bichitos[jj].Start(bix, biy, E_inicial, 1, R, ran64);
 			}
 
-		Fate.food_distribution(food,int(Nfood/2),L/4,-L/4,sigma*2,sigma*2,Rfood,Franja,ran64,food_dis);
+		Fate.food_distribution(food,int(Nfood/2),L/4,-L/4,sigma*2,sigma*2,Rfood,Franja,Rcir,ran64,food_dis);
 		
 		StartAnimacion(); // Dibujar
 
@@ -664,7 +703,7 @@ int main(void)
 			comida <<t<<" "<<CountFood<<"\n";
 
 			TermineCuadro();
-			Fate.RechargeFood(food, ran64,Franja);
+			Fate.RechargeFood(food, ran64,Franja, Rcir);
 
 		}
 		salida.close();
